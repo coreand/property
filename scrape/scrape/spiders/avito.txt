@@ -1,0 +1,50 @@
+3200000
+2500000
+1530000
+4500000
+4200000
+4870000
+1400000
+1100000
+3200000
+2150000
+2600000
+2780000
+1443000
+2650000
+3700000
+1012000
+800000
+2000000
+2600000
+2600000
+3600000
+1550000
+3200000
+3000000
+3150000
+2150000
+5400000
+1325000
+2200000
+3900000
+2500000	1765488800	2655	https://www.avito.ru/mahachkala/kvartiry/2-k_kvartira_84_m_79_et._1765488800
+1100000	1395707005	3099	https://www.avito.ru/mahachkala/kvartiry/1-k_kvartira_58_m_513_et._1395707005
+3200000	1813053325	396	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_127_m_1113_et._1813053325
+2150000	1801901823	59	https://www.avito.ru/mahachkala/kvartiry/1-k_kvartira_47_m_59_et._1801901823
+2650000	958837900	7175	https://www.avito.ru/mahachkala/kvartiry/2-k_kvartira_65_m_15_et._958837900
+3150000	1310629156	4064	https://www.avito.ru/mahachkala/kvartiry/2-k_kvartira_76_m_412_et._1310629156
+2760000	1499184460	3641	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_115_m_710_et._1499184460
+2960000	1426358357	8142	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_60_m_313_et._1426358357
+3700000	1213359595	1393	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_60_m_45_et._1213359595
+1012000	1759869632	693	https://www.avito.ru/mahachkala/kvartiry/1-k_kvartira_44_m_33_et._1759869632
+3000000	1110747945	4080	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_85_m_44_et._1110747945
+1150000	1772859693	931	https://www.avito.ru/mahachkala/kvartiry/1-k_kvartira_40_m_1012_et._1772859693
+4870000	1692913986	18094	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_100_m_79_et._1692913986
+11000000	1319718071	3099	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_140_m_55_et._1319718071
+1400000	1776741895	1703	https://www.avito.ru/mahachkala/kvartiry/2-k_kvartira_82_m_813_et._1776741895
+1170000	1312808111	4389	https://www.avito.ru/mahachkala/kvartiry/1-k_kvartira_40_m_19_et._1312808111
+5000000	1707932858	242	https://www.avito.ru/mahachkala/kvartiry/4-k_kvartira_100_m_29_et._1707932858
+3200000	1349661222	1365	https://www.avito.ru/mahachkala/kvartiry/2-k_kvartira_80_m_1212_et._1349661222
+2000000	1416328165	505	https://www.avito.ru/mahachkala/kvartiry/2-k_kvartira_70_m_910_et._1416328165
+2600000	1812845010	686	https://www.avito.ru/mahachkala/kvartiry/3-k_kvartira_75_m_59_et._1812845010
