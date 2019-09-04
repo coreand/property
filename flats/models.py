@@ -18,3 +18,11 @@ class Flat(models.Model):
 
     def __str__(self):
         return f'Цена: {self.price} | Комнаты: {self.rooms}'
+
+
+class Page(models.Model):
+    number = models.IntegerField(primary_key=True)
+
+    def __str__(self):
+        return str(self.number)
+

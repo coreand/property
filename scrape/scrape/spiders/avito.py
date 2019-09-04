@@ -44,6 +44,7 @@ spider_settings = {
     #
     # },
     'COOKIES_ENABLED': True,
+    'DUPEFILTER_CLASS': 'scrapy.dupefilters.BaseDupeFilter',
 }
 
 HDR = {
@@ -75,47 +76,41 @@ class AvitoSpider(scrapy.Spider):
         link = pages.find_all('a')[-1]
         href = link.get('href')
         f = furl(href)
-        last_page = f.args['p']
-        yield scrapy.Request(
-            url=query.format(region, last_page),
-            headers=HDR,
-            meta={'dont_redirect': True, "handle_httpstatus_list": [302]},
-            callback=self.parse_page
-        )
+        last_page = int(f.args['p'])
+        for page in range(1, last_page + 1):
+            if Page.objects.filter(number=page).exists():
+                continue
+
+            yield scrapy.Request(
+                url=query.format(region, page),
+                meta={'page': page},
+                headers=HDR,
+                callback=self.parse_page,
+            )
 
     def parse_page(self, response):
-        # if response.url == 'https://www.avito.ru/blocked':
-        if response.status == 302:
+        page = response.meta['page']
+
+        if response.url == 'https://www.avito.ru/blocked':
             print('BLOCKED')
-            return scrapy.Request(url=response.url, headers=HDR, callback=self.parse_page)
 
         soup = BeautifulSoup(response.text, 'lxml')
         flats = soup.find(class_='js-catalog_serp')
         for link in flats.find_all('a'):
             href = link.get('href')
             if href and '/kvartiry/' in href:
-                yield response.follow(
-                    href,
-                    headers=HDR,
-                    meta={'dont_redirect': True, "handle_httpstatus_list": [302]},
-                    callback=self.parse_item
-                )
+                pass
+                # yield response.follow(
+                #     href,
+                #     headers=HDR,
+                #     callback=self.parse_item
+                # )
 
-        pages = soup.find(class_='pagination-pages clearfix')
-        for link in pages.find_all('a'):
-            href = link.get('href')
-            if href and '?p=' in href:
-                yield response.follow(
-                    href,
-                    headers=HDR,
-                    meta={'dont_redirect': True, "handle_httpstatus_list": [302]},
-                    callback=self.parse_page
-                )
+        Page.objects.create(number=page)
 
     def parse_item(self, response):
-        if response.status == 302:
+        if response.url == 'https://www.avito.ru/blocked':
             print('BLOCKED')
-            return scrapy.Request(url=response.url, headers=HDR, callback=self.parse_item)
 
         soup = BeautifulSoup(response.text, 'lxml')
 
