@@ -29,20 +29,20 @@ spider_settings = {
     'CONCURRENT_REQUESTS_PER_DOMAIN': 300,
     'DOWNLOAD_DELAY': 1.5,
     # 'DOWNLOAD_TIMEOUT': 20,
-    # 'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
+    'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
     # 'USER_AGENTS': [
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Safari/537.36',
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0',
     # ],
-    # 'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
-    # 'DOWNLOADER_MIDDLEWARES': {
-    #     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
-    #     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
-    #     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-    #     'scrapy_useragents.downloadermiddlewares.useragents.UserAgentsMiddleware': 700,
-    #
-    # },
+    'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
+    'DOWNLOADER_MIDDLEWARES': {
+        'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
+        'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
+        # 'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+        # 'scrapy_useragents.downloadermiddlewares.useragents.UserAgentsMiddleware': 700,
+
+    },
     'COOKIES_ENABLED': True,
     'DUPEFILTER_CLASS': 'scrapy.dupefilters.BaseDupeFilter',
 }
@@ -55,6 +55,67 @@ HDR = {
     'Accept-Encoding': 'gzip, deflate, br',
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
 }
+
+
+def get_proxies():
+    from urllib.request import Request, urlopen
+    from bs4 import BeautifulSoup
+    from fake_useragent import UserAgent
+
+    ua = UserAgent()  # From here we generate a random user agent
+    proxies = []  # Will contain proxies [ip, port]
+
+    # Retrieve latest proxies
+    proxies_req = Request('https://www.sslproxies.org/')
+    proxies_req.add_header('User-Agent', ua.random)
+    proxies_doc = urlopen(proxies_req).read().decode('utf8')
+
+    soup = BeautifulSoup(proxies_doc, 'html.parser')
+    proxies_table = soup.find(id='proxylisttable')
+
+    # Save proxies in the array
+    for row in proxies_table.tbody.find_all('tr'):
+        proxies.append({
+            'ip': row.find_all('td')[0].string,
+            'port': row.find_all('td')[1].string
+        })
+
+    proxies = ['{}:{}'.format(proxy['ip'], proxy['port']) for proxy in proxies]
+    return proxies
+
+
+def check_proxy(min_amount=None):
+    import requests
+
+    proxies = get_proxies()
+
+    url = 'https://httpbin.org/ip'
+
+    Proxy.objects.all().delete()
+
+    for ind, proxy in enumerate(proxies):
+        print("Request #%d" % ind)
+
+        cur_proxy = {"http": "http://" + proxy, "https": "https://" + proxy}
+
+        try:
+            for j in range(3):
+                response = requests.get(url, proxies=cur_proxy, timeout=7.0)
+                res = response.json()
+        except:
+            print("Skipping. Bad proxy")
+        else:
+            print("Working proxy")
+
+            Proxy.objects.create(ip=proxy)
+            if min_amount is not None and Proxy.objects.count() == min_amount:
+                break
+
+    if Proxy.objects.count() == 0:
+        raise ConnectionError('PROXY is not found')
+
+    with open('proxies.txt', 'w+', encoding='utf8') as file:
+        file.write('\n'.join(Proxy.objects.all()))
 
 
 def get_number(line):
@@ -186,8 +247,13 @@ def save_unique_lines(filename):
             file.write('{}\n'.format(line))
 
 
-if __name__ == '__main__':
+def main():
     process = CrawlerProcess()
     # process = CrawlerProcess(get_project_settings())
     process.crawl(AvitoSpider)
     process.start()
+
+
+if __name__ == '__main__':
+    # main()
+    check_proxy()
