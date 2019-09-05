@@ -12,6 +12,9 @@ import django
 from urllib.request import Request, urlopen
 import aiohttp
 import asyncio
+from fake_useragent import UserAgent
+from requests_html import HTMLSession, AsyncHTMLSession
+from rotating_proxies.policy import BanDetectionPolicy
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "property.settings")
 django.setup()
@@ -20,34 +23,51 @@ from flats.models import *
 
 query = 'https://www.avito.ru/{}/kvartiry/prodam?p={}&view=gallery'
 region = 'mahachkala'
+
+
 # region = 'rossiya'
+
+class MyPolicy(BanDetectionPolicy):
+    def response_is_ban(self, request, response):
+        # use default rules, but also consider HTTP 200 responses
+        # a ban if there is 'captcha' word in response body.
+        ban = super(MyPolicy, self).response_is_ban(request, response)
+        ban = ban or response.status == 302
+        return ban
+
+    def exception_is_ban(self, request, exception):
+        # override method completely: don't take exceptions in account
+        return None
 
 
 spider_settings = {
     'AUTOTHROTTLE_ENABLED': True,
-    'AUTOTHROTTLE_START_DELAY': 2.0,
+    # 'AUTOTHROTTLE_START_DELAY': 2.0,
     # 'AUTOTHROTTLE_MAX_DELAY': 10.0,
-    'AUTOTHROTTLE_TARGET_CONCURRENCY': 3.0,
+    'AUTOTHROTTLE_TARGET_CONCURRENCY': 0.5,
     'CONCURRENT_REQUESTS': 300,
-    'CONCURRENT_REQUESTS_PER_DOMAIN': 300,
-    'DOWNLOAD_DELAY': 1.5,
+    'CONCURRENT_REQUESTS_PER_DOMAIN': 2,
+    'DOWNLOAD_DELAY': 4.0,
     # 'DOWNLOAD_TIMEOUT': 20,
-    # 'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
+
     # 'USER_AGENTS': [
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Safari/537.36',
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0',
     # ],
-    # 'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
-    # 'DOWNLOADER_MIDDLEWARES': {
-    #     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
-    #     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
-    # 'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-    # 'scrapy_useragents.downloadermiddlewares.useragents.UserAgentsMiddleware': 700,
+    'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
+    'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
+    'DOWNLOADER_MIDDLEWARES': {
+        'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
+        'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
+        'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+        'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 700,
 
-    # },
-    'COOKIES_ENABLED': True,
-    'DUPEFILTER_CLASS': 'scrapy.dupefilters.BaseDupeFilter',
+    },
+    # 'COOKIES_ENABLED': True,
+    # 'DUPEFILTER_CLASS': 'scrapy.dupefilters.BaseDupeFilter',
+    # 'ROTATING_PROXY_BAN_POLICY': 'scrape.scrape.spiders.MyBanPolicy',
+
 }
 
 HDR = {
@@ -59,11 +79,8 @@ HDR = {
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
 }
 
-loop = asyncio.get_event_loop()
-
 
 def parse_proxy():
-    from requests_html import HTMLSession, AsyncHTMLSession
     session = HTMLSession()
     url = 'https://free-proxy-list.net/'
     r = session.get(url)
@@ -82,9 +99,6 @@ def parse_proxy():
 
 
 def get_proxies():
-    from bs4 import BeautifulSoup
-    from fake_useragent import UserAgent
-
     ua = UserAgent()  # From here we generate a random user agent
     proxies = []  # Will contain proxies [ip, port]
 
@@ -111,7 +125,7 @@ async def check_proxy(proxies):
     url = 'https://httpbin.org/ip'
 
     async with aiohttp.ClientSession() as session:
-        results = await asyncio.gather(*[loop.create_task(fetch(session, url, proxy))
+        results = await asyncio.gather(*[asyncio.create_task(fetch(session, url, proxy))
                                          for proxy in proxies])
         results = [result for result in results if result]
 
@@ -120,10 +134,12 @@ async def check_proxy(proxies):
 
 
 def check_real_proxy():
-    proxies1 = parse_proxy()
+    # proxies1 = parse_proxy()
+    proxies1 = []
     proxies2 = get_proxies()
     proxies1.extend(proxies2)
-    loop.run_until_complete(check_proxy(proxies1))
+
+    asyncio.run(check_proxy(proxies1))
 
 
 async def fetch(session, url, proxy):
@@ -145,9 +161,19 @@ class AvitoSpider(scrapy.Spider):
     save_file = 'avito.txt'
     custom_settings = spider_settings
 
+    def response_is_ban(self, request, response):
+        return response.status in [302, 403]
+
+    def exception_is_ban(self, request, exception):
+        return None
+
     def start_requests(self):
         url = query.format(region, 1)
-        yield scrapy.Request(url=url, headers=HDR, callback=self.handle_last)
+        yield scrapy.Request(
+            url=url,
+            headers=HDR,
+            callback=self.handle_last,
+        )
 
     def handle_last(self, response):
         soup = BeautifulSoup(response.text, 'lxml')
@@ -157,40 +183,37 @@ class AvitoSpider(scrapy.Spider):
         f = furl(href)
         last_page = int(f.args['p'])
         for page in range(1, last_page + 1):
-            if Page.objects.filter(number=page).exists():
-                continue
-
             yield scrapy.Request(
                 url=query.format(region, page),
-                meta={'page': page},
+                dont_filter=True,
                 headers=HDR,
                 callback=self.parse_page,
+
             )
 
     def parse_page(self, response):
-        page = response.meta['page']
-
-        if response.url == 'https://www.avito.ru/blocked':
-            print('BLOCKED')
+        # if response.url == 'https://www.avito.ru/blocked':
+        #     raise ConnectionError('BLOCKED')
 
         soup = BeautifulSoup(response.text, 'lxml')
         flats = soup.find(class_='js-catalog_serp')
-        for link in flats.find_all('a'):
+        if flats is None:
+            # FIXME
+            with open('saved.html', 'w+', encoding='utf8') as file:
+                file.write(response.text)
+            yield response.request
+            raise ConnectionError('BLOCKED BY FAGGOTS!')
+
+        for link in flats.find_all(class_='description-title-link js-item-link'):
             href = link.get('href')
             if href and '/kvartiry/' in href:
-                pass
-                # yield response.follow(
-                #     href,
-                #     headers=HDR,
-                #     callback=self.parse_item
-                # )
-
-        Page.objects.create(number=page)
+                yield response.follow(
+                    href,
+                    headers=HDR,
+                    callback=self.parse_item,
+                )
 
     def parse_item(self, response):
-        if response.url == 'https://www.avito.ru/blocked':
-            print('BLOCKED')
-
         soup = BeautifulSoup(response.text, 'lxml')
 
         price = soup.find(class_='js-item-price', attrs={'itemprop': 'price'})
@@ -273,5 +296,5 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
     check_real_proxy()
+    main()
