@@ -9,6 +9,9 @@ import re
 from furl import furl
 import os
 import django
+from urllib.request import Request, urlopen
+import aiohttp
+import asyncio
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "property.settings")
 django.setup()
@@ -29,20 +32,20 @@ spider_settings = {
     'CONCURRENT_REQUESTS_PER_DOMAIN': 300,
     'DOWNLOAD_DELAY': 1.5,
     # 'DOWNLOAD_TIMEOUT': 20,
-    'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
+    # 'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
     # 'USER_AGENTS': [
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Safari/537.36',
     #     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0',
     # ],
-    'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
-    'DOWNLOADER_MIDDLEWARES': {
-        'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
-        'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
-        # 'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-        # 'scrapy_useragents.downloadermiddlewares.useragents.UserAgentsMiddleware': 700,
+    # 'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
+    # 'DOWNLOADER_MIDDLEWARES': {
+    #     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
+    #     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
+    # 'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+    # 'scrapy_useragents.downloadermiddlewares.useragents.UserAgentsMiddleware': 700,
 
-    },
+    # },
     'COOKIES_ENABLED': True,
     'DUPEFILTER_CLASS': 'scrapy.dupefilters.BaseDupeFilter',
 }
@@ -56,9 +59,29 @@ HDR = {
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
 }
 
+loop = asyncio.get_event_loop()
+
+
+def parse_proxy():
+    from requests_html import HTMLSession, AsyncHTMLSession
+    session = HTMLSession()
+    url = 'https://free-proxy-list.net/'
+    r = session.get(url)
+    # r.html.render(retries=2, wait=4.0, scrolldown=2, sleep=4.0, reload=False, )
+    r.html.render()
+    soup = BeautifulSoup(r.html.html, 'lxml')
+    soup = soup.find(class_='table table-striped table-bordered dataTable')
+    soup = soup.find('tbody')
+    proxies = []
+    for line in soup.find_all('tr'):
+        values = line.find_all('td')
+        values = [value.get_text() for value in values]
+        ip, port = values[:2]
+        proxies.append(f'{ip}:{port}')
+    return proxies
+
 
 def get_proxies():
-    from urllib.request import Request, urlopen
     from bs4 import BeautifulSoup
     from fake_useragent import UserAgent
 
@@ -84,38 +107,33 @@ def get_proxies():
     return proxies
 
 
-def check_proxy(min_amount=None):
-    import requests
-
-    proxies = get_proxies()
-
+async def check_proxy(proxies):
     url = 'https://httpbin.org/ip'
 
-    Proxy.objects.all().delete()
-
-    for ind, proxy in enumerate(proxies):
-        print("Request #%d" % ind)
-
-        cur_proxy = {"http": "http://" + proxy, "https": "https://" + proxy}
-
-        try:
-            for j in range(3):
-                response = requests.get(url, proxies=cur_proxy, timeout=7.0)
-                res = response.json()
-        except:
-            print("Skipping. Bad proxy")
-        else:
-            print("Working proxy")
-
-            Proxy.objects.create(ip=proxy)
-            if min_amount is not None and Proxy.objects.count() == min_amount:
-                break
-
-    if Proxy.objects.count() == 0:
-        raise ConnectionError('PROXY is not found')
+    async with aiohttp.ClientSession() as session:
+        results = await asyncio.gather(*[loop.create_task(fetch(session, url, proxy))
+                                         for proxy in proxies])
+        results = [result for result in results if result]
 
     with open('proxies.txt', 'w+', encoding='utf8') as file:
-        file.write('\n'.join(Proxy.objects.all()))
+        file.write('\n'.join(results))
+
+
+def check_real_proxy():
+    proxies1 = parse_proxy()
+    proxies2 = get_proxies()
+    proxies1.extend(proxies2)
+    loop.run_until_complete(check_proxy(proxies1))
+
+
+async def fetch(session, url, proxy):
+    try:
+        async with session.get(url, proxy="http://" + proxy, timeout=4) as response:
+            await response.text()
+    except:
+        return ''
+    else:
+        return proxy
 
 
 def get_number(line):
@@ -256,4 +274,4 @@ def main():
 
 if __name__ == '__main__':
     # main()
-    check_proxy()
+    check_real_proxy()
