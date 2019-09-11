@@ -184,14 +184,13 @@ class AvitoSpider(scrapy.Spider):
         href = link.get('href')
         f = furl(href)
         last_page = int(f.args['p'])
-        for page in range(last_page,
-                          last_page + 1
-        ):
+        for page in range(1, last_page + 1):
             yield scrapy.Request(
                 url=query.format(region, page),
                 dont_filter=True,
                 headers=HDR,
                 callback=self.parse_page,
+                meta={'page': page}
 
             )
 
@@ -202,11 +201,9 @@ class AvitoSpider(scrapy.Spider):
         soup = BeautifulSoup(response.text, 'lxml')
         flats = soup.find(class_='js-catalog_serp')
         if flats is None:
-            # FIXME
-            with open('saved.html', 'w+', encoding='utf8') as file:
+            with open(f"{response.meta['page']}.html", 'w+', encoding='utf8') as file:
                 file.write(response.text)
-            yield response.request
-            raise ConnectionError('BLOCKED BY FAGGOTS!')
+            print('BLOCKED BY FAGGOTS!')
 
         for link in flats.find_all(class_='description-title-link js-item-link'):
             href = link.get('href')
@@ -232,7 +229,6 @@ class AvitoSpider(scrapy.Spider):
                         headers=HDR,
                         callback=self.parse_item,
                     )
-
 
     def parse_item(self, response):
         soup = BeautifulSoup(response.text, 'lxml')
