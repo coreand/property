@@ -15,6 +15,8 @@ import asyncio
 from fake_useragent import UserAgent
 from requests_html import HTMLSession, AsyncHTMLSession
 from rotating_proxies.policy import BanDetectionPolicy
+from datetime import datetime, date, timedelta
+from django.utils import timezone
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "property.settings")
 django.setup()
@@ -45,9 +47,9 @@ spider_settings = {
     # 'AUTOTHROTTLE_START_DELAY': 2.0,
     # 'AUTOTHROTTLE_MAX_DELAY': 10.0,
     'AUTOTHROTTLE_TARGET_CONCURRENCY': 0.5,
-    'CONCURRENT_REQUESTS': 300,
-    'CONCURRENT_REQUESTS_PER_DOMAIN': 2,
-    'DOWNLOAD_DELAY': 4.0,
+    'CONCURRENT_REQUESTS': 10,
+    'CONCURRENT_REQUESTS_PER_DOMAIN': 10,
+    'DOWNLOAD_DELAY': 4,
     # 'DOWNLOAD_TIMEOUT': 20,
 
     # 'USER_AGENTS': [
@@ -57,14 +59,14 @@ spider_settings = {
     # ],
     'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
     'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
-    'DOWNLOADER_MIDDLEWARES': {
-        'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
-        'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
-        'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-        'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 700,
-
-    },
-    # 'COOKIES_ENABLED': True,
+    # 'DOWNLOADER_MIDDLEWARES': {
+    #     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
+    #     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
+    #     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+    #     'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 700,
+    #
+    # },
+    'COOKIES_ENABLED': True,
     # 'DUPEFILTER_CLASS': 'scrapy.dupefilters.BaseDupeFilter',
     # 'ROTATING_PROXY_BAN_POLICY': 'scrape.scrape.spiders.MyBanPolicy',
 
@@ -182,7 +184,9 @@ class AvitoSpider(scrapy.Spider):
         href = link.get('href')
         f = furl(href)
         last_page = int(f.args['p'])
-        for page in range(1, last_page + 1):
+        for page in range(last_page,
+                          last_page + 1
+        ):
             yield scrapy.Request(
                 url=query.format(region, page),
                 dont_filter=True,
@@ -207,21 +211,38 @@ class AvitoSpider(scrapy.Spider):
         for link in flats.find_all(class_='description-title-link js-item-link'):
             href = link.get('href')
             if href and '/kvartiry/' in href:
-                yield response.follow(
-                    href,
-                    headers=HDR,
-                    callback=self.parse_item,
-                )
+                flat_id = furl(href).path.segments[-1].split('_')[-1]
+                flat = Flat.objects.filter(flat_id=flat_id)
+                if flat.exists():
+                    scraped_date = flat[0].scraped_date
+                    date_now = datetime.now()
+                    time_dif = date_now - scraped_date
+                    twenty_four_hours = timedelta(days=0, hours=24, minutes=0, seconds=0)
+                    if time_dif > twenty_four_hours:
+                        yield response.follow(
+                            href,
+                            headers=HDR,
+                            callback=self.parse_item,
+                        )
+                    else:
+                        print('спать пошли')
+                else:
+                    yield response.follow(
+                        href,
+                        headers=HDR,
+                        callback=self.parse_item,
+                    )
+
 
     def parse_item(self, response):
         soup = BeautifulSoup(response.text, 'lxml')
-
-        price = soup.find(class_='js-item-price', attrs={'itemprop': 'price'})
-        price = price.get('content')
-
+        print('обосрались')
         ads_id = soup.find(attrs={'data-marker': 'item-view/item-id'})
         ads_id = ads_id.get_text()
         ads_id = get_number(ads_id)
+
+        price = soup.find(class_='js-item-price', attrs={'itemprop': 'price'})
+        price = price.get('content')
 
         views_count = soup.find(class_='title-info-metadata-item title-info-metadata-views')
         views_count = views_count.get_text()
@@ -262,6 +283,7 @@ class AvitoSpider(scrapy.Spider):
         flat_fields['views_count'] = views_count
         flat_fields['price'] = price
         flat_fields['url'] = response.url
+        flat_fields['scraped_date'] = timezone.now
 
         flat, created = Flat.objects.update_or_create(
             flat_id=ads_id,

@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+from datetime import datetime
 
 
 class Flat(models.Model):
@@ -13,11 +15,12 @@ class Flat(models.Model):
     square = models.FloatField()
     living_square = models.FloatField(null=True)
     kitchen_square = models.FloatField(null=True)
+    scraped_date = models.DateTimeField(default=None)
     finish_date = models.CharField(max_length=120, null=True)
     url = models.URLField()
 
     def __str__(self):
-        return f'Цена: {self.price} | Комнаты: {self.rooms}'
+        return f'Цена: {self.price} | Комнаты: {self.rooms} | Updated : {self.scraped_date}'
 
 
 class Page(models.Model):
