@@ -250,7 +250,6 @@ class AvitoSpider(scrapy.Spider):
                             callback=self.parse_item,
                             meta=response.meta
                         )
-                    else:
                 else:
                     yield response.follow(
                         href,
