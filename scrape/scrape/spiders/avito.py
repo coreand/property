@@ -21,10 +21,39 @@ from django.utils import timezone
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "property.settings")
 django.setup()
 
-from flats.models import *
+from flats.models import Flat
 
 query = 'https://www.avito.ru/{}/kvartiry/prodam?p={}&view=gallery'
 region = 'mahachkala'
+
+
+def reset_date_scraped():
+    all_flats = Flat.objects.all()
+    for flat in all_flats:
+        flat.scraped_date = datetime.now() - timedelta(days=2)
+        flat.save()
+
+
+def get_avg_price(**kwargs):
+    district = kwargs.pop('district1', None)
+    if district:
+        all_flats = Flat.objects.filter(**kwargs)
+        filtered_flats = []
+        for flat in all_flats:
+            if district in [flat.district1, flat.district2, flat.district3]:
+                filtered_flats.append(flat)
+    else:
+        filtered_flats = Flat.objects.filter(**kwargs)
+    total_price = 0
+    for flat in filtered_flats:
+        total_price += flat.price
+    try:
+        avg_price = total_price / len(filtered_flats)
+        info = [int(avg_price), int(len(filtered_flats))]
+    except ZeroDivisionError:
+        return ['0', '0']
+    else:
+        return info
 
 
 # region = 'rossiya'
@@ -46,10 +75,10 @@ spider_settings = {
     'AUTOTHROTTLE_ENABLED': True,
     # 'AUTOTHROTTLE_START_DELAY': 2.0,
     # 'AUTOTHROTTLE_MAX_DELAY': 10.0,
-    'AUTOTHROTTLE_TARGET_CONCURRENCY': 0.5,
-    'CONCURRENT_REQUESTS': 10,
-    'CONCURRENT_REQUESTS_PER_DOMAIN': 10,
-    'DOWNLOAD_DELAY': 4,
+    'AUTOTHROTTLE_TARGET_CONCURRENCY': 1.5,
+    'CONCURRENT_REQUESTS': 50,
+    'CONCURRENT_REQUESTS_PER_DOMAIN': 50,
+    'DOWNLOAD_DELAY': 2.5,
     # 'DOWNLOAD_TIMEOUT': 20,
 
     # 'USER_AGENTS': [
@@ -190,8 +219,7 @@ class AvitoSpider(scrapy.Spider):
                 dont_filter=True,
                 headers=HDR,
                 callback=self.parse_page,
-                meta={'page': page}
-
+                meta={'page': page, 'region': region}
             )
 
     def parse_page(self, response):
@@ -220,19 +248,20 @@ class AvitoSpider(scrapy.Spider):
                             href,
                             headers=HDR,
                             callback=self.parse_item,
+                            meta=response.meta
                         )
                     else:
-                        print('спать пошли')
                 else:
                     yield response.follow(
                         href,
                         headers=HDR,
                         callback=self.parse_item,
+                        meta=response.meta
+
                     )
 
     def parse_item(self, response):
         soup = BeautifulSoup(response.text, 'lxml')
-        print('обосрались')
         ads_id = soup.find(attrs={'data-marker': 'item-view/item-id'})
         ads_id = ads_id.get_text()
         ads_id = get_number(ads_id)
@@ -249,6 +278,19 @@ class AvitoSpider(scrapy.Spider):
         params = [param.get_text() for param in params]
 
         flat_fields = {}
+        flat_fields['region'] = response.meta['region']
+
+        districts = soup.find_all(class_='item-address-georeferences-item__content')
+        if districts:
+            if len(districts) == 1:
+                flat_fields['district1'] = districts[0].get_text()
+            elif len(districts) == 2:
+                flat_fields['district1'] = districts[0].get_text()
+                flat_fields['district2'] = districts[1].get_text()
+            elif len(districts) >= 3:
+                flat_fields['district1'] = districts[0].get_text()
+                flat_fields['district2'] = districts[1].get_text()
+                flat_fields['district3'] = districts[2].get_text()
 
         for item in params:
             name, value = item.split(':')
@@ -307,6 +349,7 @@ def save_unique_lines(filename):
 
 
 def main():
+    check_real_proxy()
     process = CrawlerProcess()
     # process = CrawlerProcess(get_project_settings())
     process.crawl(AvitoSpider)
@@ -314,5 +357,5 @@ def main():
 
 
 if __name__ == '__main__':
-    check_real_proxy()
     main()
+    # reset_date_scraped()

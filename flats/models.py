@@ -15,12 +15,16 @@ class Flat(models.Model):
     square = models.FloatField()
     living_square = models.FloatField(null=True)
     kitchen_square = models.FloatField(null=True)
-    scraped_date = models.DateTimeField(default=None)
+    scraped_date = models.DateTimeField(default=None, null=True)
     finish_date = models.CharField(max_length=120, null=True)
     url = models.URLField()
+    district1 = models.CharField(null=True, max_length=100, default=None)
+    district2 = models.CharField(null=True, max_length=100, default=None)
+    district3 = models.CharField(null=True, max_length=100, default=None)
+    region = models.CharField(null=True, max_length=100, default=None)
 
     def __str__(self):
-        return f'Цена: {self.price} | Комнаты: {self.rooms} | Updated : {self.scraped_date}'
+        return f'Район: {self.region} | Регион: {self.region} | Updated : {self.scraped_date}'
 
 
 class Page(models.Model):
