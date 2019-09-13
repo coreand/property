@@ -1,10 +1,6 @@
 import scrapy
-from bs4 import BeautifulSoup, Comment
-from urllib.parse import urljoin
-from scrapy.spiders import CrawlSpider, Rule
-from scrapy.linkextractors import LinkExtractor
+from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
 import re
 from furl import furl
 import os
@@ -13,18 +9,35 @@ from urllib.request import Request, urlopen
 import aiohttp
 import asyncio
 from fake_useragent import UserAgent
-from requests_html import HTMLSession, AsyncHTMLSession
+from requests_html import HTMLSession
 from rotating_proxies.policy import BanDetectionPolicy
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from django.utils import timezone
+
+from scrape.scrape.moscow_stations import stations
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "property.settings")
 django.setup()
 
 from flats.models import Flat
 
-query = 'https://www.avito.ru/{}/kvartiry/prodam?p={}&view=gallery'
+query = 'https://www.avito.ru/{city}/kvartiry/prodam?p={page}&view=gallery&{param}={district}'
 region = 'mahachkala'
+
+
+class City:
+
+    def __init__(self, name, param, districts) -> None:
+        self.name = name
+        self.districts = districts
+        self.param = param
+
+
+mah = City('mahachkala', 'district', ['383', '384', '385'])
+moscow = City('moskva', 'metro',
+              stations)
+
+cities = [mah, moscow]
 
 
 def reset_date_scraped():
@@ -75,10 +88,10 @@ spider_settings = {
     'AUTOTHROTTLE_ENABLED': True,
     # 'AUTOTHROTTLE_START_DELAY': 2.0,
     # 'AUTOTHROTTLE_MAX_DELAY': 10.0,
-    'AUTOTHROTTLE_TARGET_CONCURRENCY': 1.5,
-    'CONCURRENT_REQUESTS': 50,
-    'CONCURRENT_REQUESTS_PER_DOMAIN': 50,
-    'DOWNLOAD_DELAY': 2.5,
+    'AUTOTHROTTLE_TARGET_CONCURRENCY': 1,
+    'CONCURRENT_REQUESTS': 10,
+    'CONCURRENT_REQUESTS_PER_DOMAIN': 10,
+    'DOWNLOAD_DELAY': 4,
     # 'DOWNLOAD_TIMEOUT': 20,
 
     # 'USER_AGENTS': [
@@ -88,14 +101,14 @@ spider_settings = {
     # ],
     'ROTATING_PROXY_LIST_PATH': 'proxies.txt',
     'ROTATING_PROXY_PAGE_RETRY_TIMES': 3,
-    # 'DOWNLOADER_MIDDLEWARES': {
-    #     'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
-    #     'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
-    #     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-    #     'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 700,
-    #
-    # },
-    'COOKIES_ENABLED': True,
+    'DOWNLOADER_MIDDLEWARES': {
+        'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
+        'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
+        # 'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+        # 'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 700,
+
+    },
+    # 'COOKIES_ENABLED': True,
     # 'DUPEFILTER_CLASS': 'scrapy.dupefilters.BaseDupeFilter',
     # 'ROTATING_PROXY_BAN_POLICY': 'scrape.scrape.spiders.MyBanPolicy',
 
@@ -199,12 +212,15 @@ class AvitoSpider(scrapy.Spider):
         return None
 
     def start_requests(self):
-        url = query.format(region, 1)
-        yield scrapy.Request(
-            url=url,
-            headers=HDR,
-            callback=self.handle_last,
-        )
+        for city in cities:
+            for district in city.districts:
+                url = query.format(city=city.name, page=1, district=district, param=city.param)
+                yield scrapy.Request(
+                    url=url,
+                    headers=HDR,
+                    callback=self.handle_last,
+                    meta={'city': city, 'district': district}
+                )
 
     def handle_last(self, response):
         soup = BeautifulSoup(response.text, 'lxml')
@@ -215,11 +231,16 @@ class AvitoSpider(scrapy.Spider):
         last_page = int(f.args['p'])
         for page in range(1, last_page + 1):
             yield scrapy.Request(
-                url=query.format(region, page),
+                url=query.format(
+                    city=response.meta['city'].name,
+                    page=page,
+                    district=response.meta['district'],
+                    param=response.meta['city'].param
+                ),
                 dont_filter=True,
                 headers=HDR,
                 callback=self.parse_page,
-                meta={'page': page, 'region': region}
+                meta={'page': page, 'region': response.meta['city'].name}
             )
 
     def parse_page(self, response):

@@ -24,7 +24,7 @@ class Flat(models.Model):
     region = models.CharField(null=True, max_length=100, default=None)
 
     def __str__(self):
-        return f'Район: {self.region} | Регион: {self.region} | Updated : {self.scraped_date}'
+        return f'Район: {self.district1} | rooms: {self.rooms} | Updated : {self.scraped_date}'
 
 
 class Page(models.Model):

@@ -45,13 +45,13 @@ class HomeView(View):
                 params['region'] = region
 
             avg_price, flats_amount = get_avg_price(**params)
-            print(avg_price, flats_amount)
-            # print(building_type)
-            # print(rooms)
-            # print(floor)
-            # print(floors_amount)
-            # print(district)
-            # print(region)
+            # print(avg_price, flats_amount)
+            print(building_type)
+            print(rooms)
+            print(floor)
+            print(floors_amount)
+            print(district)
+            print(region)
         context = {
             'form': form,
             'avg_price': avg_price,
