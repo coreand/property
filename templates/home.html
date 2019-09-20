@@ -21,7 +21,10 @@
             <div class="col-md-8 mb-4">
                 <form method="POST" class="card-body">
                     {% csrf_token %}
-                    {{ form.building_type|as_crispy_field }}
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        {{ form.building_type|as_crispy_field }}
+
+                    </div>
                     <div class="col-lg-4 col-md-6 mb-4">
                         {{ form.rooms|as_crispy_field }}
 
@@ -38,9 +41,20 @@
                         {{ form.region|as_crispy_field }}
 
                     </div>
-                    <div class="col-lg-4 col-md-6 mb-4">
-                        {{ form.district|as_crispy_field }}
-
+                    <div id="district_div">
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            {{ form.district|as_crispy_field }}
+                        </div>
+                    </div>
+                    <div id="msc_div">
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            {{ form.moscow_stations|as_crispy_field }}
+                        </div>
+                    </div>
+                    <div id="spb_div">
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            {{ form.spb_stations|as_crispy_field }}
+                        </div>
                     </div>
                     <button class="btn btn-primary btn-lg btn-block" type="submit">Продолжить</button>
                 </form>
@@ -67,3 +81,45 @@
 </body>
 
 </html>
+<script>
+    var link = document.getElementById('district_div');
+    link.style.display = 'none';
+    var link = document.getElementById('msc_div');
+    link.style.display = 'none';
+    var link = document.getElementById('spb_div');
+    link.style.display = 'none';
+
+    function Hide() {
+        if(document.getElementById('id_region').options[document.getElementById('id_region').selectedIndex].value == "moskva") {
+             document.getElementById('district_div').style.display = 'none';
+             document.getElementById('spb_div').style.display = 'none';
+             document.getElementById('msc_div').style.display = '';
+        }else if(document.getElementById('id_region').options[document.getElementById('id_region').selectedIndex].value == "NotSpecified") {
+             document.getElementById('district_div').style.display = 'none';
+             document.getElementById('msc_div').style.display = 'none';
+             document.getElementById('spb_div').style.display = 'none';
+         }else if(document.getElementById('id_region').options[document.getElementById('id_region').selectedIndex].value == "sankt_peterburg") {
+             document.getElementById('district_div').style.display = 'none';
+             document.getElementById('msc_div').style.display = 'none';
+             document.getElementById('spb_div').style.display = '';
+
+        }else if(document.getElementById('id_region').options[document.getElementById('id_region').selectedIndex].value == "mahachkala") {
+             document.getElementById('district_div').style.display = '';
+             document.getElementById('msc_div').style.display = 'none';
+             document.getElementById('spb_div').style.display = 'none';
+
+        }
+    }
+
+    window.onload = function() {
+        document.getElementById('id_region').onchange = Hide;
+    };
+
+
+
+
+
+
+
+
+</script>

@@ -14,7 +14,7 @@ from rotating_proxies.policy import BanDetectionPolicy
 from datetime import datetime, timedelta
 from django.utils import timezone
 
-from scrape.scrape.moscow_stations import stations
+from scrape.scrape.moscow_stations import msc_stations, spb_stations
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "property.settings")
 django.setup()
@@ -34,10 +34,10 @@ class City:
 
 
 mah = City('mahachkala', 'district', ['383', '384', '385'])
-moscow = City('moskva', 'metro',
-              stations)
+moscow = City('moskva', 'metro', msc_stations)
+sankt_peterburg = City('sankt-peterburg', 'metro', spb_stations)
 
-cities = [mah, moscow]
+cities = [mah, moscow, sankt_peterburg]
 
 
 def reset_date_scraped():
