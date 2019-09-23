@@ -13,17 +13,46 @@
 
     <link rel="stylesheet" type="text/css" href="{% static 'flats/main.css' %}">
     <title>Dream Analytics</title>
+    <script src="https://maps.api.2gis.ru/2.0/loader.js"></script>
+    <script type="text/javascript">
+            var locationInfo = document.getElementById('location');
+
+            DG.then(function () {
+                var map,
+                    marker;
+
+                map = DG.map('map', {
+                    center: [54.981, 82.891],
+                    zoom: 15
+                });
+
+                marker = DG.marker([54.981, 82.891], {
+                    draggable: true
+                }).addTo(map);
+
+                marker.on('drag', function(e) {
+                    var lat = e.target._latlng.lat.toFixed(3),
+                        lng = e.target._latlng.lng.toFixed(3);
+
+                    locationInfo.innerHTML = lat + ', ' + lng;
+                });
+            });
+        </script>
+
+</head>
 <body>
 <main>
     <div class="container">
-        <h2 class="my-5 h2 text-center">Сортировка квартир</h2>
+        <h2 class="my-5 h2 text-center" style="position:relative; top:400px">Сортировка квартир</h2>
+        <p id="location"></p>
         <div class="row">
             <div class="col-md-8 mb-4">
+                <div id="map" style="width:500px; height:400px; position:relative; left:500px; top:450px;"></div>
+
                 <form method="POST" class="card-body">
                     {% csrf_token %}
                     <div class="col-lg-4 col-md-6 mb-4">
                         {{ form.building_type|as_crispy_field }}
-
                     </div>
                     <div class="col-lg-4 col-md-6 mb-4">
                         {{ form.rooms|as_crispy_field }}
@@ -58,6 +87,7 @@
                     </div>
                     <button class="btn btn-primary btn-lg btn-block" type="submit">Продолжить</button>
                 </form>
+
                 {% if avg_price %}
                 <h2>Средняя цена: {{ avg_price }}</h2>
                 {% endif %}
@@ -114,6 +144,14 @@
     window.onload = function() {
         document.getElementById('id_region').onchange = Hide;
     };
+
+
+
+
+
+
+
+
 
 
 

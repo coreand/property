@@ -22,7 +22,6 @@ django.setup()
 from flats.models import Flat
 
 query = 'https://www.avito.ru/{city}/kvartiry/prodam?p={page}&view=gallery&{param}={district}'
-region = 'mahachkala'
 
 
 class City:
@@ -37,7 +36,7 @@ mah = City('mahachkala', 'district', ['383', '384', '385'])
 moscow = City('moskva', 'metro', msc_stations)
 sankt_peterburg = City('sankt-peterburg', 'metro', spb_stations)
 
-cities = [mah, moscow, sankt_peterburg]
+cities = [mah, ]
 
 
 def reset_date_scraped():
@@ -222,14 +221,22 @@ class AvitoSpider(scrapy.Spider):
                     meta={'city': city, 'district': district}
                 )
 
+    first_page = 1
+
     def handle_last(self, response):
         soup = BeautifulSoup(response.text, 'lxml')
         pages = soup.find(class_='pagination-pages clearfix')
-        link = pages.find_all('a')[-1]
+        try:
+            link = pages.find_all('a')[-1]
+        except AttributeError:
+            with open(f"first.html", 'w+', encoding='utf8') as file:
+                file.write(response.text)
+            print('BLOCKED')
+            return
         href = link.get('href')
         f = furl(href)
         last_page = int(f.args['p'])
-        for page in range(1, last_page + 1):
+        for page in range(self.first_page, last_page + 1):
             yield scrapy.Request(
                 url=query.format(
                     city=response.meta['city'].name,
@@ -252,7 +259,8 @@ class AvitoSpider(scrapy.Spider):
         if flats is None:
             with open(f"{response.meta['page']}.html", 'w+', encoding='utf8') as file:
                 file.write(response.text)
-            print('BLOCKED BY FAGGOTS!')
+            print('BLOCKED')
+            return
 
         for link in flats.find_all(class_='description-title-link js-item-link'):
             href = link.get('href')
@@ -263,7 +271,7 @@ class AvitoSpider(scrapy.Spider):
                     scraped_date = flat[0].scraped_date
                     date_now = datetime.now()
                     time_dif = date_now - scraped_date
-                    twenty_four_hours = timedelta(days=0, hours=24, minutes=0, seconds=0)
+                    twenty_four_hours = timedelta(days=2, hours=0, minutes=0, seconds=0)
                     if time_dif > twenty_four_hours:
                         yield response.follow(
                             href,
@@ -299,6 +307,14 @@ class AvitoSpider(scrapy.Spider):
 
         flat_fields = {}
         flat_fields['region'] = response.meta['region']
+
+        coordinates = soup.find(class_='b-search-map expanded item-map-wrapper js-item-map-wrapper')
+        latitude = coordinates['data-map-lat']
+        longitude = coordinates['data-map-lon']
+        if latitude:
+            flat_fields['latitude'] = latitude
+        if longitude:
+            flat_fields['longitude'] = longitude
 
         districts = soup.find_all(class_='item-address-georeferences-item__content')
         if districts:
@@ -341,10 +357,11 @@ class AvitoSpider(scrapy.Spider):
         flat_fields['views_count'] = views_count
         flat_fields['price'] = price
         flat_fields['url'] = response.url
-        flat_fields['scraped_date'] = timezone.now
+        flat_fields['scraped_date'] = timezone.now()
 
         flat, created = Flat.objects.update_or_create(
             flat_id=ads_id,
+
             defaults=flat_fields
         )
 
