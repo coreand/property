@@ -36,7 +36,7 @@ mah = City('mahachkala', 'district', ['383', '384', '385'])
 moscow = City('moskva', 'metro', msc_stations)
 sankt_peterburg = City('sankt-peterburg', 'metro', spb_stations)
 
-cities = [mah, ]
+cities = [mah, moscow, sankt_peterburg]
 
 
 def reset_date_scraped():
