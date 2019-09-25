@@ -71,5 +71,4 @@ class HomeView(View):
             'avg_price': avg_price,
             'flats_amount': flats_amount,
         }
-        # return redirect('flats:home-page')
         return render(self.request, 'home.html', context)
