@@ -64,7 +64,6 @@ class HomeView(View):
             # print(floor)
             # print(floors_amount)
             # print(district)
-            # print(region)
         context = {
             'form': form,
             'avg_price': avg_price,
