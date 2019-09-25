@@ -393,6 +393,13 @@ def main():
     process.start()
 
 
+def count():
+    all_flats = Flat.objects.all()
+    all_obj = [len(flat.region) for flat in all_flats if flat.region]
+    print(max(all_obj))
+
+
 if __name__ == '__main__':
-    main()
+    # main()
     # reset_date_scraped()
+    count()
