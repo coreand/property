@@ -1,1 +1,1 @@
-web: python manage.py migrate && gunicorn property.wsgi & python scrape/scrape/spiders/avito.py
+web: python manage.py collectstatic --noinput && python manage.py migrate && gunicorn property.wsgi & python scrape/scrape/spiders/avito.py
