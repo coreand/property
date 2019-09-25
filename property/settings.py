@@ -60,7 +60,7 @@ WSGI_APPLICATION = 'property.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
+#
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -72,7 +72,18 @@ DATABASES = {
 
     }
 }
-
+#
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'new_flatsDB',
+#         'USER': 'postgres',
+#         'PASSWORD': 'qwerty123',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators

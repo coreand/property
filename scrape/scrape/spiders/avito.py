@@ -13,6 +13,7 @@ from requests_html import HTMLSession
 from rotating_proxies.policy import BanDetectionPolicy
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.db.models import Q
 
 from scrape.scrape.moscow_stations import msc_stations, spb_stations
 
@@ -48,14 +49,10 @@ def reset_date_scraped():
 
 def get_avg_price(**kwargs):
     district = kwargs.pop('district1', None)
+    q = Q()
     if district:
-        all_flats = Flat.objects.filter(**kwargs)
-        filtered_flats = []
-        for flat in all_flats:
-            if district in [flat.district1, flat.district2, flat.district3]:
-                filtered_flats.append(flat)
-    else:
-        filtered_flats = Flat.objects.filter(**kwargs)
+        q = Q(district1=district) | Q(district2=district) | Q(district3=district)
+    filtered_flats = Flat.objects.filter(q, **kwargs)
     total_price = 0
     for flat in filtered_flats:
         total_price += flat.price
@@ -67,8 +64,6 @@ def get_avg_price(**kwargs):
     else:
         return info
 
-
-# region = 'rossiya'
 
 class MyPolicy(BanDetectionPolicy):
     def response_is_ban(self, request, response):
