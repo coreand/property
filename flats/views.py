@@ -53,7 +53,7 @@ class HomeView(View):
             if region == 'moskva':
                 if moscow_stations != 'NotSpecified':
                     params['district1'] = moscow_stations
-            if region == 'sankt_peterburg':
+            if region == 'sankt-peterburg':
                 if spb_stations != 'NotSpecified':
                     params['district1'] = spb_stations
 

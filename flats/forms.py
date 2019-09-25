@@ -29,7 +29,7 @@ CITIES = (
     ('NotSpecified', 'Не важно'),
     ('mahachkala', 'Махачкала'),
     ('moskva', 'Москва'),
-    ('sankt_peterburg', 'Санкт-Питербург'),
+    ('sankt-peterburg', 'Санкт-Петербург'),
 
 )
 
