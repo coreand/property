@@ -14,6 +14,7 @@ from rotating_proxies.policy import BanDetectionPolicy
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db.models import Q
+import math
 
 from scrape.scrape.moscow_stations import msc_stations, spb_stations
 
@@ -49,10 +50,20 @@ def reset_date_scraped():
 
 def get_avg_price(**kwargs):
     district = kwargs.pop('district1', None)
+    square = kwargs.pop('square', None)
     q = Q()
     if district:
         q = Q(district1=district) | Q(district2=district) | Q(district3=district)
-    filtered_flats = Flat.objects.filter(q, **kwargs)
+    if square is not None:
+        if square[0] == '':
+            square[0] = 0
+        if square[1] == '':
+            square[1] = math.inf
+    if square:
+        filtered_flats = Flat.objects.filter(q, **kwargs, square__range=square)
+    else:
+        filtered_flats = Flat.objects.filter(q, **kwargs)
+
     total_price = 0
     for flat in filtered_flats:
         total_price += flat.price

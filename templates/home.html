@@ -1,6 +1,29 @@
 {% load crispy_forms_tags %}
 {% load static %}
 <!doctype html>
+
+<style>
+
+#id_square_min{
+  width: 200%;
+  margin-left: -15px;
+
+}
+#id_square_max{
+    width: 200%;
+    margin-top: -54px;
+  margin-left: 80px;
+
+
+
+}
+
+
+
+
+
+</style>
+
 <html>
 <head>
     <!-- Required meta tags -->
@@ -14,43 +37,25 @@
     <link rel="stylesheet" type="text/css" href="{% static 'flats/main.css' %}">
     <title>Dream Analytics</title>
     <script src="https://maps.api.2gis.ru/2.0/loader.js"></script>
-    <script type="text/javascript">
-            var locationInfo = document.getElementById('location');
-
-            DG.then(function () {
-                var map,
-                    marker;
-
-                map = DG.map('map', {
-                    center: [54.981, 82.891],
-                    zoom: 15
-                });
-
-                marker = DG.marker([54.981, 82.891], {
-                    draggable: true
-                }).addTo(map);
-
-                marker.on('drag', function(e) {
-                    var lat = e.target._latlng.lat.toFixed(3),
-                        lng = e.target._latlng.lng.toFixed(3);
-
-                    locationInfo.innerHTML = lat + ', ' + lng;
-                });
-            });
-        </script>
 
 </head>
 <body>
+
 <main>
+    <div id="map" style="width: 100%; height: 450px;"></div>
+
     <div class="container">
-        <h2 class="my-5 h2 text-center" style="position:relative; top:400px">Сортировка квартир</h2>
-        <p id="location"></p>
+        <h2 class="my-5 h2 text-center">Сортировка квартир</h2>
         <div class="row">
             <div class="col-md-8 mb-4">
-                <div id="map" style="width:500px; height:400px; position:relative; left:500px; top:450px;"></div>
-
+                {% csrf_token %}
                 <form method="POST" class="card-body">
                     {% csrf_token %}
+
+
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        {{ form.coors|as_crispy_field }}
+                    </div>
                     <div class="col-lg-4 col-md-6 mb-4">
                         {{ form.building_type|as_crispy_field }}
                     </div>
@@ -61,6 +66,13 @@
                     <div class="col-lg-4 col-md-6 mb-4">
                         {{ form.floor|as_crispy_field }}
 
+                    </div>
+
+                    <div class="col-lg-4 col-md-6 mb-4"> Диапазон площади:
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            {{ form.square_min|as_crispy_field }}
+                            {{ form.square_max|as_crispy_field }}
+                        </div>
                     </div>
                     <div class="col-lg-4 col-md-6 mb-4">
                         {{ form.floors_amount|as_crispy_field }}
@@ -108,6 +120,60 @@
         integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
         crossorigin="anonymous"></script>
 
+<script type="text/javascript">
+            var locationInfo = document.getElementById('id_coors');
+
+
+
+            DG.then(function () {
+                var map,
+                    marker;
+
+                map = DG.map('map', {
+                    center: [42.93189, 47.55642],
+                    zoom: 15
+                });
+                marker = DG.marker([42.93189, 47.55642], {
+                    draggable: true
+                }).addTo(map);
+
+                map.locate({setView: true, watch: true})
+                    .on('locationfound', function(e) {
+                        DG.marker([e.latitude, e.longitude], {
+                    draggable: true
+                });
+                    })
+                    .on('locationerror', function(e) {
+                        DG.popup()
+                          .setLatLng(map.getCenter())
+                          .setContent('Доступ к определению местоположения отключён')
+                          .openOn(map);
+                });
+
+                map.on('click', function(e) {
+                    marker.setLatLng([e.latlng.lat, e.latlng.lng]);
+                });
+
+                marker.on('move', function(e) {
+                    var lat = e.target._latlng.lat.toFixed(5),
+                        lng = e.target._latlng.lng.toFixed(5);
+
+                    locationInfo.setAttribute("value", lat + ', ' + lng);
+                });
+            });
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
 </body>
 
 </html>
@@ -144,9 +210,6 @@
     window.onload = function() {
         document.getElementById('id_region').onchange = Hide;
     };
-
-
-
 
 
 

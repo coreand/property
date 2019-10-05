@@ -384,3 +384,7 @@ class FilterForm(forms.Form):
     district = forms.ChoiceField(choices=MAKHACHKALA_DISTRICTS, required=False, label='Район')
     moscow_stations = forms.ChoiceField(choices=MOSCOW_STATIONS, required=False, label='Станция Метро')
     spb_stations = forms.ChoiceField(choices=SPB_STATIONS, required=False, label='Станция Метро')
+    square_min = forms.CharField(required=False, label='')
+    square_max = forms.CharField(required=False, label='')
+
+    coors = forms.CharField(max_length=300, required=False, label='Координаты')
