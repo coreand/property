@@ -12,7 +12,7 @@ SECRET_KEY = '*ffjo6ck%7rercq5n0($s8g*1$#xcn^x1#y=i7yoon=5$(8kyu'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [dream-property.herokuapp.com]
+ALLOWED_HOSTS = ['dream-property.herokuapp.com']
 
 # Application definition
 
