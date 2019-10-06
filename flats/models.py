@@ -23,8 +23,8 @@ class Flat(models.Model):
     district3 = models.CharField(null=True, max_length=25, default=None)
     region = models.CharField(null=True, max_length=16, default=None)
 
-    longitude = models.FloatField(null=True, default=None, blank=True)
     latitude = models.FloatField(null=True, default=None, blank=True)
+    longitude = models.FloatField(null=True, default=None, blank=True)
 
     def __str__(self):
         return f'Район: {self.district1} | rooms: {self.rooms} | Updated : {self.scraped_date}'

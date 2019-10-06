@@ -1,3 +1,4 @@
+from django.forms import model_to_dict
 from django.shortcuts import render
 from flats.models import Flat
 from django.views.generic import View
@@ -78,9 +79,11 @@ class HomeView(View):
                 flats_with_coors = Flat.objects.exclude(longitude=None)
 
                 for flat in flats_with_coors:
-                    if calc_coors(cur_lat, cur_long, flat.latitude, flat.longitude) < 0.007:
+                    if calc_coors(cur_lat, cur_long, flat.longitude, flat.latitude,) < 0.007:
                         coors_nearby_flats.append(flat)
+                        print(model_to_dict(flat))
                         ids.append(flat.flat_id)
+                print(coors_nearby_flats)
                 nearby_flats = Flat.objects.filter(pk__in=ids)
 
                 total_price = 0
@@ -95,6 +98,10 @@ class HomeView(View):
                     nearby_flats = nearby_flats.filter(**params, square__range=square)
                 else:
                     nearby_flats = nearby_flats.filter(**params)
+
+                for item in nearby_flats:
+                    print(item.latitude)
+                    print(item.longitude)
 
                 for flatt in nearby_flats:
                     total_price += flatt.price
