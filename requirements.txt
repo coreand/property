@@ -19,7 +19,7 @@ furl==2.0.0
 hyperlink==19.0.0
 idna==2.8
 incremental==17.5.0
-lxml==4.4.1
+lxml==4.6.3
 multidict==4.5.2
 orderedmultidict==1.0.1
 parse==1.12.1
